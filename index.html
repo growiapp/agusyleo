@@ -7,6 +7,7 @@
     <title>Agustina &amp; Leonel · Nos casamos</title>
     <meta name="description" content="Agustina y Leonel se casan el 6 de noviembre de 2026 en San Luis.">
     <meta name="robots" content="noindex,follow">
+    <meta name="referrer" content="no-referrer">
     <meta name="theme-color" content="#070707">
     <meta name="color-scheme" content="dark">
     <link rel="canonical" href="https://agusyleo.growi.ar/">
@@ -32,8 +33,6 @@
 
     <link rel="preload" as="image" type="image/avif" href="assets/photos/cover-lg.avif" imagesrcset="assets/photos/cover-sm.avif 640w, assets/photos/cover-lg.avif 853w" imagesizes="(min-width: 900px) 67vh, (orientation: landscape) and (min-width: 600px) 67vh, 100vw" fetchpriority="high">
     <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-latin.woff2" crossorigin>
-    <link rel="preconnect" href="https://open.spotify.com" crossorigin>
-    <link rel="preconnect" href="https://embed-cdn.spotifycdn.com" crossorigin>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23070707'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='serif' font-size='27' fill='white'%3EA%26L%3C/text%3E%3C/svg%3E">
     <script>document.documentElement.classList.add('js');</script>
     <link rel="stylesheet" href="styles.css">
@@ -284,7 +283,7 @@
 
           <p class="form-status" id="formStatus" role="alert"></p>
           <button class="button button--primary button--single rsvp-form__submit" type="submit">
-            <span>Revisar</span>
+            <span>Continuar</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
           </button>
         </form>
@@ -295,15 +294,11 @@
           <p class="chapter-label">Nuestra canción</p>
           <h2 class="chapter__title" id="songTitle">Those Eyes</h2>
           <p class="song__artist" id="songArtist">New West</p>
-          <a class="button button--ghost button--single" id="spotifySectionLink" href="https://open.spotify.com/track/50x1Ic8CaXkYNvjmxe3WXy" target="_blank" rel="noopener noreferrer">
-            <span>Abrir en Spotify</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
-          </a>
-        </div>
-        <div class="song__player reveal" data-reveal>
-          <div class="spotify-embed" id="spotifyEmbed" aria-label="Reproductor de Those Eyes en Spotify">
-            <p>Cargando Spotify…</p>
-          </div>
+          <button class="button button--ghost button--single song__toggle" id="songToggle" type="button" aria-controls="songAudio">
+            <span>Escuchar</span>
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg>
+          </button>
         </div>
       </section>
 
@@ -344,7 +339,7 @@
       </button>
       <div class="music-player__details" id="musicDetails">
         <div class="music-player__info">
-          <span id="musicStatus">Cargando Spotify…</span>
+          <span id="musicStatus">Listo para escuchar</span>
           <strong id="playerSongTitle">Those Eyes · New West</strong>
         </div>
       </div>
@@ -352,19 +347,20 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/></svg>
       </button>
     </aside>
+    <audio id="songAudio" preload="none"></audio>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <dialog class="rsvp-dialog" id="rsvpDialog" aria-labelledby="dialogTitle">
       <form method="dialog" class="rsvp-dialog__panel">
         <button class="rsvp-dialog__close" value="cancel" aria-label="Cerrar revisión">×</button>
-        <h2 id="dialogTitle">¿Está todo bien?</h2>
+        <h2 id="dialogTitle">¿Así está bien?</h2>
         <div class="rsvp-dialog__summary" id="rsvpSummary"></div>
-        <p class="rsvp-dialog__hint" id="rsvpDialogHint">En WhatsApp solo te queda enviar el mensaje.</p>
+        <p class="rsvp-dialog__hint" id="rsvpDialogHint">Tu respuesta está lista para enviar.</p>
         <div class="rsvp-dialog__actions">
           <button class="text-button" value="cancel">Editar</button>
           <button class="button button--dark" id="confirmRsvp" type="button">
-            <span>Ir a WhatsApp</span>
+            <span>Enviar por WhatsApp</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
           </button>
         </div>

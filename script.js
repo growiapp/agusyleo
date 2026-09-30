@@ -56,10 +56,9 @@ const WEDDING_CONFIG = {
   music: {
     title: "Those Eyes",
     artist: "New West",
-    spotifyUrl: "https://open.spotify.com/track/50x1Ic8CaXkYNvjmxe3WXy",
-    spotifyUri: "spotify:track:50x1Ic8CaXkYNvjmxe3WXy",
-    startAtSeconds: 48,
-    sdkUrl: "https://open.spotify.com/embed/iframe-api/v1",
+    // Grabación autorizada (Home Session), recortada para empezar en el 00:48 del original
+    // (sin seek al iniciar). A los invitados sólo se les muestra título y artista.
+    src: "assets/audio/those-eyes-home-session.mp3",
   },
   social: {
     siteUrl: "https://agusyleo.growi.ar/",
@@ -77,16 +76,9 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let toastTimer;
 let pendingWhatsAppMessage = "";
-let spotifyController;
-let spotifyControllerReady = false;
-let spotifyTrackPrepared = false;
-let spotifyPlaybackRequested = false;
-let spotifyPlaybackStarted = false;
-let spotifyPlaybackTimeout;
-let spotifyControlTimeout;
-let spotifyRequestFromOpening = false;
-let spotifySdkFailed = false;
-let spotifySeekCorrectionAttempted = false;
+let songAudio;
+let musicLoadTimer;
+let musicTimedOut = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   applyConfig();
@@ -213,14 +205,6 @@ function applyConfig() {
   const avoidText = document.querySelector(".avoid-note dd");
   if (avoidText) avoidText.textContent = dressCode.avoid;
 
-  [byId("spotifySectionLink")].forEach((link) => {
-    if (!link || isPlaceholder(music.spotifyUrl)) return;
-    link.href = music.spotifyUrl;
-    link.setAttribute("aria-label", `Abrir en Spotify: ${music.title} de ${music.artist}`);
-  });
-
-  byId("spotifyEmbed")?.setAttribute("aria-label", `Reproductor de ${music.title} de ${music.artist} en Spotify`);
-
   document.title = social.title;
   updateMeta("meta[name='description']", social.description);
   updateMeta("meta[property='og:title']", social.title);
@@ -287,8 +271,8 @@ function setupOpening() {
   prepareInvitationBehindCover(cover);
 
   openButton.addEventListener("click", () => {
-    // El gesto queda reservado para Spotify: play() sobre la pista ya preparada.
-    tryPlayMusic(true);
+    // iOS sólo permite sonido dentro del gesto: play() va primero y sin nada asíncrono antes.
+    playMusic(true);
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     openButton.disabled = true;
     // La invitación se ve durante la salida, pero sigue inerte hasta que la portada desaparece:
@@ -353,15 +337,25 @@ function updateScenes() {
   if (reducedMotion.matches) return;
   const viewport = window.innerHeight;
   // Primero todas las lecturas de layout, después todas las escrituras: sin flushes intercalados.
+  // El recorrido es el del sticky: alto de la escena menos alto del escenario (100svh). En iOS,
+  // innerHeight cambia al mostrarse u ocultarse las barras de Safari y hacía saltar el progreso.
   const updates = scenes
-    .map((scene) => [scene, scene.getBoundingClientRect()])
+    .map((scene) => [scene, scene.getBoundingClientRect(), scene.querySelector(".stage")?.offsetHeight || viewport])
     .filter(([, rect]) => rect.bottom >= -viewport && rect.top <= viewport * 2)
-    .map(([scene, rect]) => {
-      const travel = rect.height - viewport;
+    .map(([scene, rect, stageHeight]) => {
+      const travel = rect.height - stageHeight;
       const progress = travel > 0 ? Math.min(1, Math.max(0, -rect.top / travel)) : 1;
       const t = Math.min(1, progress / 0.75);
-      return [scene, progress, t * t * (3 - 2 * t)];
+      // Salida suave (no smoothstep): responde desde el primer píxel de scroll y aterriza igual.
+      // Con smoothstep, los primeros 40-60 px de dedo casi no movían el iris ni el cierre.
+      return [scene, progress, 1 - (1 - t) * (1 - t)];
     });
+  // Sólo las escenas cercanas llevan sus fotos en capa propia (will-change): no se repintan
+  // en cada frame y el resto de la página no reserva memoria para ellas.
+  scenes.forEach((scene) => {
+    const live = updates.some(([candidate]) => candidate === scene);
+    if (scene.classList.contains("is-live") !== live) scene.classList.toggle("is-live", live);
+  });
   updates.forEach(([scene, progress, eased]) => {
     scene.style.setProperty("--p", progress.toFixed(4));
     scene.style.setProperty("--e", eased.toFixed(4));
@@ -430,7 +424,7 @@ function setupDressCode() {
         const number = document.createElement("span");
         figure.className = "frame";
         crop.className = "frame__crop";
-        crop.style.transitionDelay = reducedMotion.matches ? "0ms" : `${index * 70}ms`;
+        crop.style.transitionDelay = reducedMotion.matches ? "0ms" : `${index * 55}ms`;
         image.src = set.src;
         image.alt = `${set.tab}: referencia de ${label.toLowerCase()}`;
         image.loading = "lazy";
@@ -652,11 +646,11 @@ function setupRsvp() {
     setText(
       "rsvpDialogHint",
       phoneReady
-        ? "En WhatsApp solo te queda enviar el mensaje."
+        ? "Tu respuesta está lista para enviar."
         : "No podemos abrir WhatsApp desde acá. Copiá el mensaje y envialo vos.",
     );
     const confirmLabel = byId("confirmRsvp")?.querySelector("span");
-    if (confirmLabel) confirmLabel.textContent = phoneReady ? "Ir a WhatsApp" : "Copiar mensaje";
+    if (confirmLabel) confirmLabel.textContent = phoneReady ? "Enviar por WhatsApp" : "Copiar mensaje";
 
     if (typeof dialog.showModal === "function") {
       dialog.showModal();
@@ -878,9 +872,18 @@ async function sendOrCopyRsvp() {
   if (isValidPhone(phone)) {
     const digits = phone.replace(/\D/g, "");
     const url = `https://wa.me/${digits}?text=${encodeURIComponent(pendingWhatsAppMessage)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    // Sin "noopener" en las opciones: con esa opción window.open devuelve null siempre y no se
+    // podría saber si el navegador bloqueó la pestaña. El opener se corta a mano.
+    const tab = window.open(url, "_blank");
+    if (!tab) {
+      // Bloqueada (algunos navegadores internos de apps): WhatsApp se abre en esta misma pestaña,
+      // así la respuesta nunca se pierde con un aviso de éxito.
+      window.location.href = url;
+      return;
+    }
+    tab.opener = null;
     dialog?.close();
-    showToast("Listo. Enviá el mensaje desde WhatsApp para confirmar.");
+    showToast("Enviá el mensaje en WhatsApp para que recibamos tu respuesta.");
     return;
   }
 
@@ -897,16 +900,10 @@ function setupMusic() {
   const { music } = WEDDING_CONFIG;
   const player = byId("musicPlayer");
   const toggle = byId("musicToggle");
-  const spotifySection = byId("spotifySectionLink");
   const minimize = byId("musicMinimize");
-  if (!player || !toggle || !minimize) return;
-
-  if (isPlaceholder(music.spotifyUrl)) {
-    if (spotifySection) spotifySection.hidden = true;
-    updateMusicUi(false, "Canción pendiente");
-  } else {
-    if (spotifySection) spotifySection.href = music.spotifyUrl;
-  }
+  const songToggle = byId("songToggle");
+  songAudio = byId("songAudio");
+  if (!player || !toggle || !minimize || !songAudio) return;
 
   const storedCompact = readSession("weddingPlayerCompact");
   const compactByDefault = window.matchMedia("(max-width: 599px), (max-height: 499px)").matches;
@@ -918,32 +915,74 @@ function setupMusic() {
     writeSession("weddingPlayerCompact", String(nextCompact));
   });
 
+  if (isPlaceholder(music.src)) {
+    player.classList.add("is-unavailable");
+    if (songToggle) songToggle.hidden = true;
+    updateMusicUi(false, "Canción pendiente");
+    return;
+  }
+
+  // preload="none": nada se descarga hasta el primer play(), así no compite con la portada.
+  songAudio.src = music.src;
+  if ("mediaSession" in navigator && "MediaMetadata" in window) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: music.title, artist: music.artist });
+  }
+
+  // "Abrir invitación" es siempre un gesto nuevo y explícito: pide reproducir aunque en una
+  // visita anterior de esta pestaña se haya pausado. Las pausas se respetan mientras se navega
+  // porque, después de abrir, nada reproduce solo. Se borra la marca que guardaban versiones previas.
+  try {
+    sessionStorage.removeItem("weddingMusicPaused");
+  } catch {
+    // Sin acceso al almacenamiento no hay nada que limpiar.
+  }
+
+  // Un solo <audio>: tocar varias veces nunca duplica la reproducción; con la carga en curso, pausa.
+  const togglePlayback = () => {
+    if (songAudio.paused) playMusic(false);
+    else songAudio.pause();
+  };
+
   toggle.addEventListener("click", () => {
     if (player.classList.contains("is-compact")) {
       setMusicPlayerCompact(player, minimize, false);
       writeSession("weddingPlayerCompact", "false");
     }
-
-    if (player.classList.contains("is-loading")) return;
-
-    if (player.classList.contains("is-playing") && spotifyController) {
-      spotifyController.pause();
-      player.classList.add("is-loading");
-      setText("musicStatus", "Pausando…");
-      window.clearTimeout(spotifyControlTimeout);
-      spotifyControlTimeout = window.setTimeout(() => {
-        if (!player.classList.contains("is-playing")) return;
-        player.classList.remove("is-loading");
-        setText("musicStatus", "Reproduciendo");
-        showToast("Spotify no respondió. Podés controlarlo desde “Nuestra canción”.");
-      }, 2000);
-      return;
-    }
-    writeSession("weddingMusicPaused", "false");
-    tryPlayMusic(false);
+    togglePlayback();
   });
+  songToggle?.addEventListener("click", togglePlayback);
 
-  setupSpotifyController();
+  // El estado visible sale de los eventos del navegador, nunca de la intención.
+  songAudio.addEventListener("playing", () => {
+    window.clearTimeout(musicLoadTimer);
+    player.classList.remove("is-unavailable");
+    updateMusicUi(true, "Reproduciendo");
+  });
+  const onBuffering = () => {
+    // stalled también llega mientras suena lo ya descargado: sólo cuenta si falta audio de verdad.
+    // Si ya está cargando, no se reinicia la espera (stalled se repite y nunca vencería).
+    if (songAudio.paused || songAudio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA || player.classList.contains("is-loading")) return;
+    updateMusicUi(true, "Cargando…", true);
+    armMusicTimeout();
+  };
+  songAudio.addEventListener("waiting", onBuffering);
+  songAudio.addEventListener("stalled", onBuffering);
+  songAudio.addEventListener("progress", () => {
+    if (player.classList.contains("is-loading")) armMusicTimeout();
+  });
+  songAudio.addEventListener("pause", () => {
+    window.clearTimeout(musicLoadTimer);
+    // Tras un error, el navegador también pausa: el estado que vale es el del error.
+    if (songAudio.ended || songAudio.error) return;
+    updateMusicUi(false, musicTimedOut ? "Tocá play para reintentar" : "Pausado");
+    musicTimedOut = false;
+  });
+  songAudio.addEventListener("ended", () => updateMusicUi(false, "Terminó la canción"));
+  songAudio.addEventListener("error", () => {
+    window.clearTimeout(musicLoadTimer);
+    player.classList.add("is-unavailable");
+    updateMusicUi(false, "La canción no cargó");
+  });
 }
 
 function setMusicPlayerCompact(player, button, compact) {
@@ -952,196 +991,51 @@ function setMusicPlayerCompact(player, button, compact) {
   button.setAttribute("aria-label", compact ? "Mostrar controles del reproductor" : "Minimizar reproductor");
 }
 
-function setupSpotifyController() {
-  const { music } = WEDDING_CONFIG;
-  const target = byId("spotifyEmbed");
-  if (!target || isPlaceholder(music.spotifyUrl) || isPlaceholder(music.sdkUrl)) return;
+function playMusic(fromOpening) {
+  if (!songAudio?.getAttribute("src")) return;
 
-  window.onSpotifyIframeApiReady = (IFrameAPI) => {
-    const options = {
-      width: "100%",
-      height: 152,
-      uri: music.spotifyUri,
-    };
-
-    IFrameAPI.createController(target, options, (controller) => {
-      spotifyController = controller;
-      spotifyControllerReady = true;
-
-      const iframe = document.querySelector(".song__player iframe");
-      iframe?.setAttribute("title", `Spotify: ${music.title} de ${music.artist}`);
-      iframe?.classList.add("spotify-embed__frame");
-      // El SDK crea el iframe con loading="lazy": como "Nuestra canción" está al final, el embed
-      // no cargaba hasta que el invitado llegaba ahí y el play() de la apertura se perdía.
-      // Se fuerza la carga después del evento load, para no competir con la foto de portada.
-      const loadEmbedNow = () => iframe?.setAttribute("loading", "eager");
-      if (document.readyState === "complete") loadEmbedNow();
-      else window.addEventListener("load", loadEmbedNow, { once: true });
-
-      controller.addListener("ready", () => {
-        spotifyControllerReady = true;
-        prepareSpotifyTrack();
-        if (spotifyPlaybackRequested) {
-          startSpotifyPlayback(spotifyRequestFromOpening);
-          return;
-        }
-        // "Listo" sólo cuando Spotify lo confirma, y sin pisar un estado posterior.
-        const player = byId("musicPlayer");
-        if (!spotifyPlaybackStarted && !player?.classList.contains("is-loading") && !player?.classList.contains("is-playing")) {
-          updateMusicUi(false, "Listo para escuchar");
-        }
-      });
-
-      // playback_started llega ~2 s antes de que haya sonido: Spotify aceptó el pedido, nada más.
-      controller.addListener("playback_started", () => {
-        spotifyPlaybackRequested = false;
-        window.clearTimeout(spotifyPlaybackTimeout);
-        window.clearTimeout(spotifyControlTimeout);
-        if (!spotifyPlaybackStarted) updateMusicUi(false, "Iniciando…");
-      });
-
-      controller.addListener("playback_update", (event) => {
-        const state = event?.data;
-        if (!state) return;
-        if (state.isBuffering) {
-          updateMusicUi(false, "Cargando canción…", true);
-          return;
-        }
-        if (!state.isPaused) {
-          // Sólo se confirma la reproducción cuando la duración es conocida y la posición avanza.
-          if (!(state.duration > 0) || !(state.position > 0)) {
-            if (!spotifyPlaybackStarted) updateMusicUi(false, "Iniciando…");
-            return;
-          }
-          const expectedPosition = music.startAtSeconds * 1000;
-          const isPreview = state.duration > 0 && state.duration <= expectedPosition;
-          const startConfirmed = !isPreview && state.position >= expectedPosition - 3000;
-
-          if (!isPreview && !startConfirmed && !spotifySeekCorrectionAttempted) {
-            spotifySeekCorrectionAttempted = true;
-            controller.seek(music.startAtSeconds);
-            updateMusicUi(false, "Ajustando el inicio…", true);
-            return;
-          }
-
-          spotifyPlaybackStarted = true;
-          spotifyPlaybackRequested = false;
-          window.clearTimeout(spotifyPlaybackTimeout);
-          window.clearTimeout(spotifyControlTimeout);
-          updateMusicUi(
-            true,
-            isPreview
-              ? "Vista previa de Spotify"
-              : "Reproduciendo",
-          );
-          return;
-        }
-        // Pausas antes de confirmar el sonido son parte del arranque, no una decisión del invitado.
-        if (!spotifyPlaybackStarted) return;
-        window.clearTimeout(spotifyControlTimeout);
-        if (state.duration > 0 && state.position >= state.duration - 500) {
-          // Terminó la pista (o la vista previa de ~30 s sin sesión): no es una pausa elegida.
-          spotifyPlaybackStarted = false;
-          updateMusicUi(false, state.duration <= music.startAtSeconds * 1000 ? "Terminó la vista previa" : "Terminó la canción");
-          return;
-        }
-        writeSession("weddingMusicPaused", "true");
-        updateMusicUi(false, "Pausado");
-      });
-
-      prepareSpotifyTrack();
-      if (spotifyPlaybackRequested) startSpotifyPlayback(spotifyRequestFromOpening);
-    });
-  };
-
-  const script = document.createElement("script");
-  script.src = music.sdkUrl;
-  script.async = true;
-  script.dataset.spotifyIframeApi = "true";
-  script.addEventListener("error", () => {
-    spotifySdkFailed = true;
-    byId("musicPlayer")?.classList.add("is-unavailable");
-    updateMusicUi(false, "Spotify no cargó");
-    const fallback = target.querySelector("p");
-    if (fallback) fallback.textContent = "Spotify no pudo cargarse. Podés abrir la canción con el enlace.";
-  });
-  document.body.append(script);
-}
-
-function prepareSpotifyTrack() {
-  const { music } = WEDDING_CONFIG;
-  if (!spotifyController || spotifyTrackPrepared) return;
-
+  // Después de un error de red, load() descarta el estado roto y el mismo gesto reintenta.
+  if (songAudio.error) songAudio.load();
+  let request;
   try {
-    spotifyController.loadEntity(music.spotifyUrl, false, music.startAtSeconds);
-    spotifyTrackPrepared = true;
-    // Todavía no hay confirmación del proveedor: el botón sigue disponible, pero no se afirma "Listo".
-    if (!spotifyPlaybackStarted) updateMusicUi(false, "Cargando canción…");
-  } catch {
-    spotifyTrackPrepared = false;
-    updateMusicUi(false, "Listo para escuchar");
+    request = songAudio.play();
+  } catch (error) {
+    request = Promise.reject(error);
   }
-}
+  updateMusicUi(true, "Cargando…", true);
+  armMusicTimeout();
 
-function tryPlayMusic(fromOpening) {
-  const { music } = WEDDING_CONFIG;
-  if (isPlaceholder(music.spotifyUrl)) {
-    updateMusicUi(false, "Canción pendiente");
-    return;
-  }
-
-  // Si el SDK no cargó, ese es el estado real, aunque la sesión recuerde una pausa previa.
-  if (fromOpening && readSession("weddingMusicPaused") === "true" && !spotifySdkFailed) {
-    updateMusicUi(false, "Pausado");
-    return;
-  }
-
-  spotifyPlaybackRequested = true;
-  spotifyRequestFromOpening = fromOpening;
-
-  if (!spotifyController || !spotifyControllerReady) {
-    updateMusicUi(false, spotifySdkFailed ? "Spotify no cargó" : "Cargando Spotify…");
-    if (!fromOpening && spotifySdkFailed) showToast("Spotify no pudo cargarse. Usá el enlace para abrir la canción.");
-    return;
-  }
-
-  startSpotifyPlayback(fromOpening);
-}
-
-function startSpotifyPlayback(fromOpening) {
-  const { music } = WEDDING_CONFIG;
-  if (!spotifyController) return;
-
-  try {
-    spotifyPlaybackRequested = false;
-    prepareSpotifyTrack();
-    spotifyController.play();
-    updateMusicUi(false, "Iniciando…", true);
-
-    window.clearTimeout(spotifyPlaybackTimeout);
-    spotifyPlaybackTimeout = window.setTimeout(() => {
-      if (byId("musicPlayer")?.classList.contains("is-playing")) return;
-      updateMusicUi(false, "Tocá play para escuchar");
-      if (!fromOpening) showToast("Spotify no arrancó. Tocá play de nuevo o usá el reproductor de “Nuestra canción”.");
-    }, 2600);
-  } catch {
+  Promise.resolve(request).catch((error) => {
+    window.clearTimeout(musicLoadTimer);
+    // AbortError: una pausa pedida durante la carga; el evento pause ya actualizó la interfaz.
+    if (error?.name === "AbortError" || songAudio.error) return;
     updateMusicUi(false, "Tocá play para escuchar");
-    if (!fromOpening) showToast("El navegador bloqueó la reproducción. Probá nuevamente o abrí la canción en Spotify.");
-  }
+    if (!fromOpening) showToast("El navegador no dejó iniciar la canción. Probá tocar play de nuevo.");
+  });
+}
+
+// La interfaz nunca queda cargando para siempre: sin datos nuevos en 15 s, se ofrece reintentar.
+function armMusicTimeout() {
+  window.clearTimeout(musicLoadTimer);
+  musicLoadTimer = window.setTimeout(() => {
+    if (songAudio.paused || songAudio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return;
+    musicTimedOut = true;
+    songAudio.pause();
+  }, 15000);
 }
 
 function updateMusicUi(isPlaying, status, isLoading = false) {
   const { music } = WEDDING_CONFIG;
   const player = byId("musicPlayer");
   const toggle = byId("musicToggle");
+  const songToggle = byId("songToggle");
   player?.classList.toggle("is-playing", isPlaying);
   player?.classList.toggle("is-loading", isLoading);
-  toggle?.setAttribute(
-    "aria-label",
-    isPlaying
-      ? `Pausar ${music.title}`
-      : `Reproducir ${music.title}`,
-  );
+  toggle?.setAttribute("aria-label", `${isPlaying ? "Pausar" : "Reproducir"} ${music.title}`);
+  if (songToggle) {
+    songToggle.classList.toggle("is-playing", isPlaying);
+    songToggle.querySelector("span").textContent = isPlaying ? "Pausar" : "Escuchar";
+  }
   setText("musicStatus", status);
 }
 

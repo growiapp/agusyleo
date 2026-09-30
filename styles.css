@@ -430,7 +430,7 @@ p {
   object-fit: cover;
   object-position: 50% 30%;
   transform: scale(1.2);
-  transition: transform 2600ms var(--settle);
+  transition: transform 2000ms var(--settle);
 }
 
 .opening.is-in .opening__frame img {
@@ -457,7 +457,7 @@ p {
   z-index: 2;
   height: 50.5%;
   background: var(--black);
-  transition: transform 1400ms var(--lens);
+  transition: transform 1100ms var(--lens);
 }
 
 .shutter--top {
@@ -485,7 +485,7 @@ p {
   left: var(--gutter);
   z-index: 3;
   opacity: 0;
-  transition: opacity 800ms ease 1200ms;
+  transition: opacity 700ms ease 900ms;
 }
 
 .opening.is-in .opening__top {
@@ -521,13 +521,32 @@ p {
   font-style: italic;
 }
 
+/* Teléfono en vertical: "Nos" cae sobre la manga y el velo (2.5–3.4:1). Un scrim radial sólo
+   detrás del título lo lleva a ≥3.1:1 incluso en los brillos (percentil 90) y a ~4.5–7:1 de
+   mediana; se desvanece dentro de su caja (sin bandas) y no llega a las caras. Tablet, desktop y
+   horizontal no lo usan. */
+@media (max-width: 599px) and (orientation: portrait) {
+  .opening__title {
+    position: relative;
+  }
+
+  .opening__title::before {
+    position: absolute;
+    z-index: -1;
+    inset: -45% calc(var(--gutter) * -1) -20%;
+    background: radial-gradient(ellipse 72% 45% at 32% 45%, rgba(7, 7, 7, 0.56) 0%, rgba(7, 7, 7, 0.31) 55%, rgba(7, 7, 7, 0) 100%);
+    content: "";
+    pointer-events: none;
+  }
+}
+
 .opening.is-in .line > span {
   transform: none;
-  transition-delay: 1100ms;
+  transition-delay: 800ms;
 }
 
 .opening.is-in .line:nth-child(2) > span {
-  transition-delay: 1220ms;
+  transition-delay: 900ms;
 }
 
 .opening__meta {
@@ -538,7 +557,7 @@ p {
   gap: 18px;
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity 700ms ease 1650ms, transform 900ms var(--settle) 1650ms;
+  transition: opacity 600ms ease 1150ms, transform 800ms var(--settle) 1150ms;
 }
 
 .opening.is-in .opening__meta {
@@ -661,6 +680,13 @@ p {
   --e: 0;
 }
 
+/* Mientras la escena está cerca, las fotos que escalan con el scroll van en su propia capa. */
+.is-live .hero__photo img,
+.is-live .iris__photo img,
+.is-live .closing__frame img {
+  will-change: transform;
+}
+
 .stage {
   position: sticky;
   top: 0;
@@ -673,8 +699,9 @@ p {
    Mobile: los nombres ocupan una franja negra propia y la foto empieza justo
    debajo (su inicio se calcula con el tamaño de los nombres, no con un % fijo).
    En pantallas bajas los nombres escalan también por alto. */
+/* Teléfono: 140vh (la foto ya está completa y los datos aparecen en la primera mitad). */
 .hero {
-  height: 190vh;
+  height: 140vh;
   --name-size: clamp(52px, min(19vw, 10.5svh), 260px);
 }
 
@@ -720,7 +747,7 @@ p {
   position: absolute;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 900ms ease;
+  transition: opacity 600ms ease;
 }
 
 .hero.is-in .hero__name {
@@ -834,13 +861,16 @@ p {
 }
 
 /* ---------- 01 · Iris sobre las manos (momento memorable) ----------
-   El encuadre se abre desde una ventana chica mientras la imagen se asienta de
-   1.28 a 1 (contra-zoom). "El sí" queda detrás y es cubierto por la foto. */
+   Teléfono: la foto ya se reconoce al entrar (ventana de ~3/4 del cuadro, contra-zoom
+   1.12 → 1) y el cuadro completo llega en ~media pantalla de scroll (170vh de escena).
+   Layout ancho: ventana chica, contra-zoom 1.28 → 1 y 230vh, como fue aprobado. "El sí" queda detrás y es cubierto por la foto; sólo en el
+   layout ancho: en un teléfono en vertical asomaba recortado alrededor del iris. */
 .iris {
-  height: 230vh;
-  --ix0: 31%;
-  --iy0: 34%;
+  height: 170vh;
+  --ix0: 12%;
+  --iy0: 16%;
   --fx: 0%;
+  --z0: 1.12;
 }
 
 .iris .stage {
@@ -850,6 +880,7 @@ p {
 }
 
 .iris__word {
+  display: none;
   position: absolute;
   color: #262626;
   font-family: var(--font-display);
@@ -876,7 +907,7 @@ p {
 .iris__photo img {
   object-fit: cover;
   object-position: 42% 62%;
-  transform: scale(calc(1.28 - var(--e) * 0.28));
+  transform: scale(calc(var(--z0) - var(--e) * (var(--z0) - 1)));
 }
 
 .iris__photo::after {
@@ -971,7 +1002,7 @@ p {
 .js .reveal {
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 900ms var(--settle), transform 1100ms var(--settle);
+  transition: opacity 650ms var(--settle), transform 800ms var(--settle);
 }
 
 .js .reveal.is-visible {
@@ -1003,7 +1034,7 @@ p {
 
 .js .lunch__band {
   clip-path: inset(50% 0 50% 0);
-  transition: clip-path 1300ms var(--lens);
+  transition: clip-path 950ms var(--lens);
 }
 
 .lunch.is-visible .lunch__band {
@@ -1023,7 +1054,7 @@ p {
 
 .js .lunch__band img {
   transform: scale(1.12);
-  transition: transform 2200ms var(--settle);
+  transition: transform 1600ms var(--settle);
 }
 
 .lunch.is-visible .lunch__band img {
@@ -1093,6 +1124,18 @@ p {
 .dress {
   padding: 110px 0 120px;
   border-top: 1px solid var(--line);
+}
+
+/* Teléfono: 02 → 03 sin vacío (el CTA de Maps ya cierra el capítulo). Tablet y desktop
+   conservan 120 / 110 px. */
+@media (max-width: 599px) {
+  .lunch {
+    padding-bottom: 80px;
+  }
+
+  .dress {
+    padding-top: 72px;
+  }
 }
 
 .dress__head,
@@ -1182,7 +1225,7 @@ p {
 
 .js .frame__crop {
   clip-path: inset(0 0 100% 0);
-  transition: clip-path 800ms var(--lens), opacity 500ms ease;
+  transition: clip-path 650ms var(--lens), opacity 500ms ease;
 }
 
 .strip.is-visible .frame__crop {
@@ -1550,36 +1593,13 @@ p {
   color: var(--grey);
 }
 
-.song__player {
-  width: 100%;
-  min-width: 0;
-  max-width: 640px;
+.song__toggle .icon-pause,
+.song__toggle.is-playing .icon-play {
+  display: none;
 }
 
-.spotify-embed {
-  min-height: 152px;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--black-soft);
-}
-
-.spotify-embed > p {
-  display: grid;
-  min-height: 152px;
-  padding: 24px;
-  color: var(--grey-soft);
-  font-size: 14px;
-  place-items: center;
-}
-
-.spotify-embed iframe,
-.spotify-embed__frame,
-.song__player iframe {
+.song__toggle.is-playing .icon-pause {
   display: block;
-  width: 100%;
-  height: 152px;
-  border: 0;
-  border-radius: 12px;
 }
 
 /* =========================================================================
@@ -1589,8 +1609,9 @@ p {
    (misma altura y mismo desplazamiento), así nunca pisa la foto en ningún
    momento de la animación. Espeja la apertura.
    ========================================================================= */
+/* Teléfono: 145vh; el texto termina de entrar cerca del final y no queda un tramo quieto. */
 .closing {
-  height: 180vh;
+  height: 145vh;
   --bar-top: 10%;
   /* Teléfonos angostos: la franja deja lugar al reproductor fijo debajo del CTA. */
   --bar-bottom: clamp(248px, 42svh, 320px);
@@ -2054,17 +2075,29 @@ body.invitation-open .music-player {
     right: auto;
     bottom: 8vh;
     left: 5vw;
-    width: min(340px, calc(50vw - 37.5vh - 5vw - 24px));
+    /* En una tablet vertical la foto ocupa casi todo el ancho y el cálculo daba negativo. */
+    width: clamp(260px, calc(50vw - 37.5vh - 5vw - 24px), 340px);
   }
 
   .hero__when {
     font-size: clamp(18px, 1.8vw, 26px);
   }
 
+  .iris__word {
+    display: block;
+  }
+
+  .hero,
+  .closing {
+    height: 160vh;
+  }
+
   .iris {
+    height: 190vh;
     --ix0: calc(50% - 11vh);
     --iy0: 30%;
     --fx: calc(50% - 37.5vh);
+    --z0: 1.28;
   }
 
   .iris__title {
@@ -2125,11 +2158,14 @@ body.invitation-open .music-player {
   }
 
   .rsvp {
-    grid-template-columns: minmax(16rem, 0.75fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
     gap: clamp(48px, 6vw, 96px);
   }
 
+  /* El título se mide contra su columna: "acompañás?" ocupa 5.3em, así que 18cqi
+     nunca invade el formulario, con cualquier ancho. */
   .rsvp__intro {
+    container-type: inline-size;
     position: sticky;
     top: calc(var(--header-h) + 48px);
     align-self: start;
@@ -2144,15 +2180,6 @@ body.invitation-open .music-player {
   .form-status,
   .rsvp-form__submit {
     grid-column: 1 / -1;
-  }
-
-  .song {
-    grid-template-columns: minmax(16rem, 0.72fr) minmax(0, 1fr);
-    gap: clamp(48px, 6vw, 96px);
-  }
-
-  .song__player {
-    justify-self: end;
   }
 
   .closing {
@@ -2187,11 +2214,143 @@ body.invitation-open .music-player {
   }
 
   .rsvp .chapter__title {
-    font-size: clamp(48px, min(6.4vw, 15vh), 104px);
+    font-size: min(18cqi, 15vh, 104px);
   }
 
   .music-player {
     right: 24px;
+  }
+}
+
+/* Desde 600 px los nombres del hero se separan apenas: el 14vw del teléfono, en una
+   tablet, los sacaba del cuadro ("gustina", "Leon"). */
+@media (min-width: 600px) {
+  .hero__name--one {
+    transform: translateX(calc(var(--p) * -3vw));
+  }
+
+  .hero__name--two {
+    transform: translateX(calc(var(--p) * 3vw));
+  }
+}
+
+/* Escritorio, tablets y teléfonos apaisados (desde 600 px, 4:3 o más): composición editorial asimétrica.
+   En un teléfono apaisado con el layout centrado, el reproductor fijo tapaba el final de "Leonel".
+   Las fotos verticales siguen a alto completo y sin estirarse (a lo sumo 44vw de ancho);
+   la tipografía ocupa la columna libre en lugar de flotar sobre una franja central.
+   Apertura: foto a la derecha, título a la izquierda. Hero: ídem, con los nombres
+   apilados en la columna. Cierre: foto a la izquierda y el texto al costado (espejo
+   de la apertura, como ya hace el teléfono en horizontal). */
+@media (min-width: 600px) and (min-aspect-ratio: 4/3) {
+  :root {
+    --side: clamp(40px, 6vw, 120px);
+    --frame-w: min(100vh * 0.666, 44vw);
+  }
+
+  .opening__frame {
+    right: var(--side);
+    left: auto;
+    width: var(--frame-w);
+    transform: none;
+  }
+
+  .opening__credits {
+    right: calc(var(--frame-w) + var(--side) * 2);
+    bottom: 12vh;
+    left: var(--side);
+    text-align: left;
+  }
+
+  .opening__title {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    margin-bottom: 28px;
+    font-size: clamp(56px, calc((100vw - var(--frame-w) - var(--side) * 3) / 3.95), 19vh);
+  }
+
+  .opening__title .line:nth-child(2) {
+    padding-left: 0.5em;
+  }
+
+  .opening__meta {
+    justify-content: flex-start;
+    gap: 20px 32px;
+  }
+
+  .hero {
+    --photo-w: min(54vw, 95vh, 952px);
+  }
+
+  .hero__photo {
+    inset: 0 var(--side) 0 auto;
+    width: var(--photo-w);
+    overflow: hidden;
+    transform: none;
+  }
+
+  .hero__names {
+    font-size: clamp(44px, calc((100vw - var(--photo-w) - var(--side) * 3) / 3.85), 20vh);
+  }
+
+  .hero__name--one,
+  .hero__name--two {
+    right: auto;
+    bottom: auto;
+    left: var(--side);
+    transform: none;
+  }
+
+  .hero__name--one {
+    top: calc(var(--header-h) + 9vh);
+  }
+
+  .hero__name--two {
+    top: calc(var(--header-h) + 9vh + 0.86em);
+  }
+
+  .hero__facts {
+    bottom: 10vh;
+    left: var(--side);
+    width: calc(100vw - var(--photo-w) - var(--side) * 3);
+  }
+
+  .closing {
+    --bar-bottom: 10%;
+  }
+
+  .closing__frame {
+    left: var(--side);
+    width: var(--frame-w);
+    transform: none;
+  }
+
+  .closing__content {
+    container-type: inline-size;
+    top: 50%;
+    right: var(--side);
+    bottom: auto;
+    left: calc(var(--frame-w) + var(--side) * 2);
+    height: auto;
+    overflow: visible;
+    padding: 0;
+    justify-items: start;
+    gap: 14px;
+    text-align: left;
+    transform: none;
+    translate: 0 calc(-50% + (1 - var(--e)) * 24px);
+  }
+
+  .closing__title {
+    font-size: min(17cqi, 14vh, 132px);
+  }
+
+  .closing__signature {
+    flex-direction: column;
+  }
+
+  .closing__sep {
+    display: none;
   }
 }
 
@@ -2247,6 +2406,14 @@ body.invitation-open .music-player {
   .button {
     padding: 0 16px;
     letter-spacing: 0.1em;
+  }
+
+  /* "Enviar por WhatsApp" entra en una línea y el botón no desborda el panel (234 px útiles). */
+  .rsvp-dialog__actions .button {
+    width: 100%;
+    min-width: 0;
+    gap: 10px;
+    letter-spacing: 0.08em;
   }
 
   .site-nav {
