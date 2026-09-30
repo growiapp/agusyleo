@@ -1,0 +1,2348 @@
+/* =========================================================================
+   FOTOGRAMA — invitación de Agustina & Leonel
+   Lenguaje: una película en blanco y negro. Todo se revela abriendo un
+   encuadre (obturador, iris, banda cinemascope) y asentando la escala,
+   como un plano que entra en foco.
+   ========================================================================= */
+
+/* Tipografía: Bodoni Moda (OFL, ver assets/fonts/OFL.txt), subset latino autohosteado. */
+@font-face {
+  font-family: "Bodoni Moda";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("assets/fonts/bodoni-moda-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Bodoni Moda";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/fonts/bodoni-moda-italic-latin.woff2") format("woff2");
+}
+
+/* Fallback métrico: iguala el ancho medio de Bodoni Moda para evitar saltos al cargar. */
+@font-face {
+  font-family: "Bodoni Fallback";
+  src: local("Times New Roman"), local("Times"), local("Liberation Serif");
+  size-adjust: 109.5%;
+}
+
+:root {
+  --black: #070707;
+  --black-soft: #121212;
+  --bone: #eeebe5;
+  --grey: #97938d;
+  --grey-soft: #c9c5bf;
+  --line: rgba(238, 235, 229, 0.18);
+  --line-strong: rgba(238, 235, 229, 0.42);
+  --ink: #0a0a0a;
+  --ink-grey: #5b5853;
+  --error: #ff9b8f;
+  --error-on-light: #8a1c10;
+  --font-display: "Bodoni Moda", "Bodoni Fallback", "Bodoni 72", Didot, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --lens: cubic-bezier(0.77, 0, 0.175, 1);   /* apertura / cierre de encuadre */
+  --settle: cubic-bezier(0.23, 1, 0.32, 1);  /* entrar en foco, feedback */
+  --gutter: 20px;
+  --header-h: 56px;
+  --content-max: 1120px;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --gutter: 48px;
+    --header-h: 64px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 16px);
+  background: var(--black);
+  color: var(--bone);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  overflow-x: clip;
+  background: var(--black);
+  font: 16px/1.55 var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.is-locked {
+  overflow: hidden;
+}
+
+/* Mientras la portada carga, la invitación no se renderiza: sus imágenes no compiten
+   con la foto de portada (LCP). Después del evento load, en tiempo ocioso, JS la maqueta
+   oculta detrás de la portada (is-prepared): el hero carga y decodifica, y abrir sólo
+   cambia la visibilidad. Sin JS la portada tampoco abre. */
+.js body:not(.invitation-open):not(.is-prepared) main,
+.js body:not(.invitation-open) .site-footer {
+  display: none;
+}
+
+.js body.is-prepared:not(.invitation-open) main {
+  visibility: hidden;
+}
+
+img,
+svg {
+  display: block;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+figure,
+dl,
+dd,
+p,
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  border: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  color: var(--black);
+  background: var(--bone);
+}
+
+/* El color del foco depende del fondo: hueso sobre negro, tinta sobre el panel claro. */
+:focus-visible {
+  outline: 2px solid var(--bone);
+  outline-offset: 4px;
+}
+
+.rsvp-dialog :focus-visible {
+  outline-color: var(--ink);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 300;
+  padding: 12px 16px;
+  color: var(--black);
+  background: var(--bone);
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ---------- Piezas tipográficas compartidas ---------- */
+.chapter-label,
+.credits dt,
+.price__condition,
+.dress__guide .avoid-note dt,
+.song__artist,
+.hero__countdown,
+.closing__signature,
+.closing__mark,
+.site-footer,
+.music-player__info span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.chapter-label {
+  color: var(--bone);
+}
+
+.chapter-label span {
+  margin-left: 0.9em;
+  color: var(--grey);
+}
+
+.chapter__title {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(52px, 13vw, 132px);
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+}
+
+.chapter__title em {
+  display: block;
+  font-style: italic;
+}
+
+.monogram {
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+/* Máscara de línea: el texto sube desde un corte. */
+.line {
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+  vertical-align: top;
+}
+
+.line > span {
+  display: block;
+  transform: translateY(105%);
+  transition: transform 1000ms var(--settle);
+}
+
+/* =========================================================================
+   Sistema de botones
+   Proporciones del par "Cómo llegar / Agendar fecha": misma altura (52 px),
+   etiqueta a la izquierda y flecha a la derecha, dos columnas iguales desde
+   600 px y ancho completo en mobile. Todos los CTA principales usan la misma
+   escala; los terciarios son texto subrayado con 44 px de área táctil.
+   ========================================================================= */
+.button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 20px;
+  border: 1px solid var(--bone);
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+  text-align: left;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, transform 140ms var(--settle);
+}
+
+.button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  transition: transform 240ms var(--settle);
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+.button--primary {
+  color: var(--black);
+  background: var(--bone);
+}
+
+.button--ghost {
+  color: var(--bone);
+  background: transparent;
+}
+
+.button--dark {
+  color: var(--bone);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.button-pair {
+  display: grid;
+  gap: 10px;
+}
+
+.button-pair .button,
+.button--single {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
+  .button-pair {
+    max-width: 580px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .button--single {
+    width: auto;
+    min-width: 285px;
+  }
+}
+
+.text-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 6px;
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 140ms var(--settle);
+}
+
+.text-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.text-button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button--primary:hover {
+    color: var(--bone);
+    background: transparent;
+  }
+
+  .button--ghost:hover {
+    color: var(--black);
+    background: var(--bone);
+  }
+
+  .button--dark:hover {
+    color: var(--ink);
+    background: transparent;
+  }
+
+  .button:hover svg {
+    transform: translateX(4px);
+  }
+
+  .button[target="_blank"]:hover svg {
+    transform: translate(3px, -3px);
+  }
+
+  .text-button:hover {
+    opacity: 0.72;
+  }
+}
+
+/* =========================================================================
+   Apertura
+   Propósito: primer impacto y umbral explícito (el gesto habilita el audio).
+   Una vez por visita. Obturador 1.4 s (--lens), foco 2.6 s (--settle),
+   títulos 1 s desde 1.1 s. Reduced motion: sólo opacidad.
+   ========================================================================= */
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: var(--black);
+  transition: opacity 600ms var(--settle);
+}
+
+.opening[hidden] {
+  display: none;
+}
+
+.opening.is-gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opening__frame {
+  position: absolute;
+  inset: 0;
+}
+
+.opening__frame picture,
+.opening__frame img {
+  width: 100%;
+  height: 100%;
+}
+
+.opening__frame img {
+  object-fit: cover;
+  object-position: 50% 30%;
+  transform: scale(1.2);
+  transition: transform 2600ms var(--settle);
+}
+
+.opening.is-in .opening__frame img {
+  transform: scale(1.04);
+}
+
+.opening.is-opening .opening__frame img {
+  transform: scale(1);
+  transition-duration: 900ms;
+}
+
+.opening__frame::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 7, 7, 0.35) 0%, rgba(7, 7, 7, 0) 30%, rgba(7, 7, 7, 0) 45%, rgba(7, 7, 7, 0.82) 100%);
+  content: "";
+}
+
+/* Obturador: dos barras que parten cerradas y se retiran a formato letterbox. */
+.shutter {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 50.5%;
+  background: var(--black);
+  transition: transform 1400ms var(--lens);
+}
+
+.shutter--top {
+  top: 0;
+  transform-origin: top;
+}
+
+.shutter--bottom {
+  bottom: 0;
+  transform-origin: bottom;
+}
+
+.opening.is-in .shutter {
+  transform: scaleY(0.12);
+}
+
+.opening.is-opening .shutter {
+  transform: scaleY(0);
+  transition-duration: 700ms;
+}
+
+.opening__top {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: var(--gutter);
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 800ms ease 1200ms;
+}
+
+.opening.is-in .opening__top {
+  opacity: 1;
+}
+
+.opening__credits {
+  position: absolute;
+  right: var(--gutter);
+  bottom: max(9vh, calc(env(safe-area-inset-bottom) + 64px));
+  left: var(--gutter);
+  z-index: 3;
+  transition: opacity 350ms ease, transform 500ms var(--settle);
+}
+
+.opening.is-opening .opening__credits {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+.opening__title {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 18px;
+  font-family: var(--font-display);
+  font-size: clamp(64px, 21vw, 168px);
+  letter-spacing: -0.035em;
+  line-height: 0.86;
+}
+
+.opening__title .line:nth-child(2) {
+  padding-left: 0.5em;
+  font-style: italic;
+}
+
+.opening.is-in .line > span {
+  transform: none;
+  transition-delay: 1100ms;
+}
+
+.opening.is-in .line:nth-child(2) > span {
+  transition-delay: 1220ms;
+}
+
+.opening__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 700ms ease 1650ms, transform 900ms var(--settle) 1650ms;
+}
+
+.opening.is-in .opening__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.opening__date {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.noscript {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 4;
+  padding: 12px;
+  color: var(--black);
+  background: var(--bone);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* =========================================================================
+   Header: la barra superior del letterbox. Siempre deja "Confirmar" a un toque.
+   ========================================================================= */
+.site-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: env(safe-area-inset-top) var(--gutter) 0;
+  background: var(--black);
+}
+
+.js body:not(.invitation-open) .site-header {
+  visibility: hidden;
+}
+
+.site-header__mark {
+  display: flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.site-header__mark span {
+  margin: 0 2px;
+  color: var(--grey);
+  font-size: 0.8em;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 4vw, 40px);
+}
+
+.site-nav a {
+  position: relative;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.site-nav a::after {
+  position: absolute;
+  right: 0;
+  bottom: 9px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 180ms var(--settle);
+}
+
+.site-nav a:focus-visible::after,
+.site-nav a[aria-current="location"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .site-nav a:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* =========================================================================
+   Escenas vinculadas al scroll
+   Cada .scene es más alta que el viewport; su .stage queda sticky y JS escribe
+   --p (progreso lineal 0→1) y --e (suavizado). Scroll nativo, sin hijacking:
+   sólo se interpolan transform, clip-path y opacity.
+   ========================================================================= */
+.scene {
+  position: relative;
+  --p: 0;
+  --e: 0;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+/* ---------- Hero: dolly-in ----------
+   Mobile: los nombres ocupan una franja negra propia y la foto empieza justo
+   debajo (su inicio se calcula con el tamaño de los nombres, no con un % fijo).
+   En pantallas bajas los nombres escalan también por alto. */
+.hero {
+  height: 190vh;
+  --name-size: clamp(52px, min(19vw, 10.5svh), 260px);
+}
+
+.hero__photo {
+  position: absolute;
+  inset: calc(var(--header-h) + env(safe-area-inset-top) + 14px + var(--name-size) * 1.66 + 10px) 0 0;
+  /* El zoom del dolly queda dentro del marco: la foto nunca sube sobre los nombres. */
+  overflow: hidden;
+}
+
+.hero__photo picture,
+.hero__photo img {
+  width: 100%;
+  height: 100%;
+}
+
+.hero__photo img {
+  object-fit: cover;
+  object-position: 45% 20%;
+  transform: scale(calc(1 + var(--p) * 0.14));
+  transform-origin: 45% 30%;
+}
+
+.hero__photo::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 7, 7, 0.2), rgba(7, 7, 7, 0) 35%, rgba(7, 7, 7, 0.9));
+  content: "";
+  opacity: calc(0.55 + var(--p) * 0.45);
+}
+
+.hero__names {
+  position: absolute;
+  inset: 0;
+  font-family: var(--font-display);
+  font-size: var(--name-size);
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+  pointer-events: none;
+}
+
+.hero__name {
+  position: absolute;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.hero.is-in .hero__name {
+  opacity: 1;
+}
+
+.hero.is-in .hero__name--two {
+  transition-delay: 160ms;
+}
+
+/* Mobile: los nombres viven en la franja negra superior y apenas muerden el
+   borde de la foto; nunca sobre los rostros. */
+.hero__name--one {
+  top: calc(var(--header-h) + env(safe-area-inset-top) + 14px);
+  left: var(--gutter);
+  transform: translateX(calc(var(--p) * -14vw));
+}
+
+.hero__name--two {
+  top: calc(var(--header-h) + env(safe-area-inset-top) + 14px + 0.8em);
+  right: var(--gutter);
+  transform: translateX(calc(var(--p) * 14vw));
+}
+
+.hero__ampersand {
+  margin-right: 0.1em;
+  font-size: 0.55em;
+  font-style: italic;
+  vertical-align: 0.35em;
+  opacity: calc(1 - var(--p) * 2);
+}
+
+/* Mobile: por encima de la zona del reproductor fijo (60 px + margen). */
+.hero__facts {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  left: var(--gutter);
+  opacity: clamp(0, calc(var(--p) * 3 - 0.45), 1);
+  transform: translateY(calc((1 - clamp(0, var(--p) * 3 - 0.45, 1)) * 24px));
+}
+
+/* Dos líneas deliberadas: el día, y la hora con el lugar. La hora nunca se separa de "hs". */
+.hero__when {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6.2vw, 32px);
+  font-style: italic;
+  line-height: 1.15;
+}
+
+.hero__when-day,
+.hero__when-rest {
+  display: block;
+}
+
+.hero__when-rest time,
+.hero__when-rest #heroCity {
+  white-space: nowrap;
+}
+
+.hero__when span[aria-hidden] {
+  color: var(--grey);
+}
+
+.hero__countdown {
+  margin-top: 18px;
+}
+
+.hero__countdown:not(:empty)::before {
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  margin-right: 12px;
+  background: currentColor;
+  vertical-align: middle;
+  content: "";
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  width: 1px;
+  height: 56px;
+  overflow: hidden;
+  background: var(--line);
+  opacity: calc(1 - var(--p) * 6);
+}
+
+.scroll-cue::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 40%;
+  background: var(--bone);
+  content: "";
+  animation: cue 2.2s var(--lens) 3;
+}
+
+@keyframes cue {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(250%);
+  }
+}
+
+/* ---------- 01 · Iris sobre las manos (momento memorable) ----------
+   El encuadre se abre desde una ventana chica mientras la imagen se asienta de
+   1.28 a 1 (contra-zoom). "El sí" queda detrás y es cubierto por la foto. */
+.iris {
+  height: 230vh;
+  --ix0: 31%;
+  --iy0: 34%;
+  --fx: 0%;
+}
+
+.iris .stage {
+  display: grid;
+  place-items: center;
+  background: var(--black);
+}
+
+.iris__word {
+  position: absolute;
+  color: #262626;
+  font-family: var(--font-display);
+  font-size: clamp(150px, 46vw, 560px);
+  font-style: italic;
+  letter-spacing: -0.05em;
+  line-height: 0.8;
+  white-space: nowrap;
+  transform: scale(calc(0.9 + var(--e) * 0.1));
+}
+
+.iris__photo {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(calc(var(--iy0) * (1 - var(--e))) calc(var(--fx) + (var(--ix0) - var(--fx)) * (1 - var(--e))));
+}
+
+.iris__photo picture,
+.iris__photo img {
+  width: 100%;
+  height: 100%;
+}
+
+.iris__photo img {
+  object-fit: cover;
+  object-position: 42% 62%;
+  transform: scale(calc(1.28 - var(--e) * 0.28));
+}
+
+.iris__photo::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 7, 7, 0) 45%, rgba(7, 7, 7, 0.85));
+  content: "";
+  opacity: clamp(0, calc(var(--p) * 2.5 - 1.3), 1);
+}
+
+.iris__title {
+  position: absolute;
+  right: var(--gutter);
+  bottom: max(10vh, calc(96px + env(safe-area-inset-bottom)));
+  left: var(--gutter);
+  opacity: clamp(0, calc(var(--p) * 3 - 1.7), 1);
+  transform: translateY(calc((1 - clamp(0, var(--p) * 3 - 1.7, 1)) * 30px));
+}
+
+.iris__title .chapter__title {
+  font-size: clamp(52px, 14vw, 150px);
+}
+
+/* ---------- Créditos: la información práctica como títulos de cierre de cine ---------- */
+.credits {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 96px var(--gutter) 120px;
+}
+
+.credits__list {
+  display: grid;
+  gap: 30px;
+}
+
+.credits__list > div {
+  display: grid;
+  gap: 6px;
+}
+
+.credits dt {
+  color: var(--grey);
+}
+
+.credits dd strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 5.6vw, 34px);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.credits dd span {
+  display: block;
+  margin-top: 6px;
+  color: var(--grey-soft);
+  font-size: 15px;
+}
+
+.credits__actions {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  margin-top: 44px;
+}
+
+.credits__actions .button-pair {
+  width: 100%;
+}
+
+@media (min-width: 700px) {
+  .credits__list > div {
+    grid-template-columns: 1fr 1fr;
+    align-items: baseline;
+    gap: 40px;
+  }
+
+  .credits dt {
+    text-align: right;
+  }
+
+  .credits__actions {
+    justify-items: center;
+  }
+
+  .credits__actions .button-pair {
+    width: 580px;
+  }
+}
+
+/* ---------- Revelados de una sola vez ---------- */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 900ms var(--settle), transform 1100ms var(--settle);
+}
+
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* El foco de teclado revela su bloque al instante, sin esperar la animación. */
+.js .reveal:focus-within {
+  opacity: 1;
+  transform: none;
+  transition-duration: 0s;
+}
+
+/* =========================================================================
+   02 · Almuerzo: banda cinemascope que se abre como un obturador (1.3 s).
+   ========================================================================= */
+.lunch {
+  padding: 40px 0 120px;
+}
+
+.lunch__band {
+  position: relative;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  overflow: hidden;
+  aspect-ratio: 2.39 / 1;
+}
+
+.js .lunch__band {
+  clip-path: inset(50% 0 50% 0);
+  transition: clip-path 1300ms var(--lens);
+}
+
+.lunch.is-visible .lunch__band {
+  clip-path: inset(0 0 0 0);
+}
+
+.lunch__band picture,
+.lunch__band img {
+  width: 100%;
+  height: 100%;
+}
+
+.lunch__band img {
+  object-fit: cover;
+  object-position: 50% 47%;
+}
+
+.js .lunch__band img {
+  transform: scale(1.12);
+  transition: transform 2200ms var(--settle);
+}
+
+.lunch.is-visible .lunch__band img {
+  transform: scale(1);
+}
+
+.lunch__body {
+  display: grid;
+  max-width: var(--content-max);
+  gap: 34px;
+  margin: 0 auto;
+  padding: 44px var(--gutter) 0;
+}
+
+.lunch__title {
+  font-size: clamp(44px, 11vw, 96px);
+  line-height: 0.95;
+}
+
+.lunch__details {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 18px;
+}
+
+.price {
+  width: 100%;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.price__amount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 10px;
+}
+
+.price__amount strong {
+  font-family: var(--font-display);
+  font-size: clamp(56px, 16vw, 116px);
+  font-variation-settings: "opsz" 24;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+}
+
+.price__amount span {
+  color: var(--grey-soft);
+  font-size: 15px;
+}
+
+.lunch__location {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+/* =========================================================================
+   03 · Dress code: tira de fotogramas (scroll-snap nativo).
+   Cada fotograma se abre de arriba hacia abajo, escalonado 70 ms.
+   ========================================================================= */
+.dress {
+  padding: 110px 0 120px;
+  border-top: 1px solid var(--line);
+}
+
+.dress__head,
+.strip-nav,
+.dress__guide {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.dress__head {
+  display: grid;
+  gap: 22px;
+}
+
+.dress__title {
+  font-size: clamp(56px, 15vw, 150px);
+  line-height: 0.88;
+}
+
+.dress__title em {
+  padding-left: 0.6em;
+}
+
+.dress__lead {
+  max-width: 30ch;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.tabs {
+  display: inline-flex;
+  width: max-content;
+  margin-top: 22px;
+  border: 1px solid var(--line-strong);
+}
+
+.tabs__tab {
+  min-width: 112px;
+  min-height: 48px;
+  padding: 0 20px;
+  color: var(--grey-soft);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+.tabs__tab[aria-selected="true"] {
+  color: var(--black);
+  background: var(--bone);
+}
+
+.strip {
+  display: flex;
+  gap: 12px;
+  padding: 34px var(--gutter) 18px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: var(--gutter);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.frame {
+  max-width: 280px;
+  flex: 0 0 62vw;
+  scroll-snap-align: start;
+}
+
+.frame__crop {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 5;
+  background: var(--black-soft);
+  transition: opacity 500ms ease;
+}
+
+.js .frame__crop {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 800ms var(--lens), opacity 500ms ease;
+}
+
+.strip.is-visible .frame__crop {
+  clip-path: inset(0 0 0 0);
+}
+
+.strip.is-instant .frame__crop {
+  clip-path: none;
+  transition: none;
+}
+
+.strip.is-switching .frame__crop {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.frame__crop img {
+  position: absolute;
+  max-width: none;
+  height: auto;
+}
+
+.frame figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  color: var(--grey);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.frame figcaption b {
+  color: var(--bone);
+  font-weight: 600;
+}
+
+.strip-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.strip-nav button {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  color: var(--bone);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+  transition: border-color 200ms ease, transform 140ms var(--settle), opacity 200ms ease;
+}
+
+.strip-nav button:active {
+  transform: scale(0.95);
+}
+
+.strip-nav button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.strip-nav svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .strip-nav button:not(:disabled):hover {
+    border-color: var(--bone);
+  }
+}
+
+.dress__guide {
+  display: grid;
+  gap: 28px;
+  padding-top: 40px;
+}
+
+/* Las dos guías ocupan la misma celda: la altura es la de la más larga y cambiar de
+   pestaña no desplaza el contenido. La inactiva sale también del árbol de accesibilidad. */
+#dressOutfit .dress__outfit-title,
+#dressOutfit .dress__outfit-text {
+  display: grid;
+}
+
+.dress__swap {
+  grid-area: 1 / 1;
+}
+
+.dress__swap:not(.is-active) {
+  visibility: hidden;
+}
+
+/* "Mejor evitar": nota secundaria y compacta, común a ambas pestañas. */
+.dress__guide .avoid-note {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.dress__guide .avoid-note dd {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.dress__outfit-title {
+  margin-bottom: 8px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.dress__guide dd {
+  max-width: 46ch;
+  color: var(--grey-soft);
+}
+
+.dress__guide .avoid-note dt {
+  margin-bottom: 10px;
+  color: var(--grey);
+}
+
+/* =========================================================================
+   04 · Confirmación
+   ========================================================================= */
+.rsvp {
+  display: grid;
+  max-width: var(--content-max);
+  gap: 56px;
+  margin: 0 auto;
+  padding: 110px var(--gutter) 120px;
+}
+
+.rsvp__deadline {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--grey-soft);
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.rsvp__deadline strong {
+  color: var(--bone);
+  font-weight: 400;
+}
+
+.rsvp-form {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+}
+
+.field,
+.choice-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field > label,
+.choice-field legend {
+  display: block;
+  margin-bottom: 10px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 16px;
+  appearance: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--grey);
+  opacity: 1;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--bone);
+  box-shadow: 0 1px 0 var(--bone);
+}
+
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.field__error {
+  display: block;
+  min-height: 20px;
+  padding-top: 4px;
+  color: var(--error);
+  font-size: 14px;
+}
+
+.field__hint {
+  margin: -2px 0 12px;
+  color: var(--grey-soft);
+  font-size: 14px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.segmented label {
+  position: relative;
+  cursor: pointer;
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  font-size: 16px;
+  text-align: center;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.segmented input:checked + span {
+  color: var(--black);
+  border-color: var(--bone);
+  background: var(--bone);
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--bone);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .segmented input:not(:checked) + span:hover {
+    border-color: var(--bone);
+  }
+}
+
+.quantity-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.conditional-field[hidden] {
+  display: none;
+}
+
+.stepper {
+  display: grid;
+  width: fit-content;
+  grid-template-columns: 48px minmax(72px, 88px) 48px;
+  border: 1px solid var(--line-strong);
+}
+
+.stepper button,
+.stepper input {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+}
+
+.stepper button {
+  display: grid;
+  padding: 0;
+  font-size: 20px;
+  cursor: pointer;
+  place-items: center;
+}
+
+.stepper button:disabled {
+  color: var(--grey);
+  cursor: not-allowed;
+}
+
+.stepper input {
+  width: 100%;
+  padding: 8px;
+  border-right: 1px solid var(--line-strong);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: none;
+  appearance: textfield;
+  text-align: center;
+}
+
+.stepper input:focus {
+  box-shadow: inset 0 0 0 1px var(--bone);
+}
+
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.form-status {
+  min-height: 24px;
+  color: var(--error);
+  font-size: 14px;
+}
+
+@media (min-width: 600px) {
+  .rsvp-form__submit {
+    justify-self: start;
+  }
+}
+
+/* =========================================================================
+   Canción
+   ========================================================================= */
+.song {
+  display: grid;
+  max-width: var(--content-max);
+  align-items: center;
+  gap: 40px;
+  margin: 0 auto;
+  padding: 110px var(--gutter) 120px;
+  border-top: 1px solid var(--line);
+}
+
+.song__artist {
+  margin: 18px 0 30px;
+  color: var(--grey);
+}
+
+.song__player {
+  width: 100%;
+  min-width: 0;
+  max-width: 640px;
+}
+
+.spotify-embed {
+  min-height: 152px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--black-soft);
+}
+
+.spotify-embed > p {
+  display: grid;
+  min-height: 152px;
+  padding: 24px;
+  color: var(--grey-soft);
+  font-size: 14px;
+  place-items: center;
+}
+
+.spotify-embed iframe,
+.spotify-embed__frame,
+.song__player iframe {
+  display: block;
+  width: 100%;
+  height: 152px;
+  border: 0;
+  border-radius: 12px;
+}
+
+/* =========================================================================
+   Plano final y cierre (escena vinculada al scroll)
+   El retrato entra a cuadro completo; con el scroll las barras entran hasta
+   formar un letterbox. La última línea viaja dentro de la barra inferior
+   (misma altura y mismo desplazamiento), así nunca pisa la foto en ningún
+   momento de la animación. Espeja la apertura.
+   ========================================================================= */
+.closing {
+  height: 180vh;
+  --bar-top: 10%;
+  /* Teléfonos angostos: la franja deja lugar al reproductor fijo debajo del CTA. */
+  --bar-bottom: clamp(248px, 42svh, 320px);
+  --bar-pad-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+.closing .stage {
+  background: var(--black);
+}
+
+.closing__frame {
+  position: absolute;
+  inset: 0;
+}
+
+.closing__frame picture,
+.closing__frame img {
+  width: 100%;
+  height: 100%;
+}
+
+.closing__frame img {
+  object-fit: cover;
+  object-position: 50% 28%;
+  transform: scale(calc(1.08 - var(--e) * 0.08));
+}
+
+.closing .shutter {
+  transition: none;
+}
+
+.closing .shutter--top {
+  height: var(--bar-top);
+  transform: translateY(calc((var(--e) - 1) * 100%));
+}
+
+.closing .shutter--bottom,
+.closing__content {
+  height: var(--bar-bottom);
+  transform: translateY(calc((1 - var(--e)) * 100%));
+}
+
+.closing__mark {
+  position: absolute;
+  top: calc(var(--header-h) + env(safe-area-inset-top) + 14px);
+  right: var(--gutter);
+  z-index: 3;
+  color: var(--grey-soft);
+  opacity: clamp(0, calc(1 - var(--p) * 3), 1);
+}
+
+.closing__content {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 8px;
+  overflow: hidden;
+  padding: 18px var(--gutter) var(--bar-pad-bottom);
+  text-align: left;
+  opacity: clamp(0, calc(var(--p) * 3.2 - 1.6), 1);
+}
+
+.closing__title {
+  font-family: var(--font-display);
+  font-size: clamp(38px, min(11vw, 9.5vh), 132px);
+  font-style: italic;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+.closing__signature {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--grey-soft);
+}
+
+.closing__sep {
+  display: none;
+}
+
+.closing .button {
+  margin-top: 4px;
+}
+
+/* Teclado: si el foco llega al CTA antes de que la franja entre, el encuadre final aparece
+   completo para que el control nunca quede invisible o fuera de cuadro. */
+.closing:focus-within .shutter--top,
+.closing:focus-within .shutter--bottom,
+.closing:focus-within .closing__content {
+  opacity: 1;
+  transform: none;
+}
+
+/* Desde 380 px el CTA entra al lado del reproductor compacto: la franja puede ser más baja. */
+@media (min-width: 380px) {
+  .closing {
+    --bar-bottom: clamp(212px, 28svh, 300px);
+    --bar-pad-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+
+  .closing .button--single {
+    width: auto;
+    max-width: calc(100% - 64px);
+  }
+}
+
+.site-footer {
+  display: flex;
+  min-height: 80px;
+  align-items: center;
+  padding: 16px var(--gutter) calc(96px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  color: var(--grey-soft);
+}
+
+.site-footer a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+/* =========================================================================
+   Reproductor fijo
+   ========================================================================= */
+.music-player {
+  position: fixed;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 80;
+  display: flex;
+  width: min(calc(100% - 24px), 360px);
+  min-height: 60px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px;
+  border: 1px solid var(--line-strong);
+  background: var(--black);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px);
+  transition: opacity 280ms var(--settle), transform 280ms var(--settle);
+}
+
+body.invitation-open .music-player {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.music-player__toggle,
+.music-player__minimize {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  cursor: pointer;
+  place-items: center;
+  transition: color 160ms ease, background-color 160ms ease, transform 140ms var(--settle);
+}
+
+.music-player__toggle {
+  color: var(--black);
+  background: var(--bone);
+}
+
+.music-player__minimize {
+  color: var(--bone);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+}
+
+.music-player__toggle:active,
+.music-player__minimize:active {
+  transform: scale(0.97);
+}
+
+.music-player__toggle svg {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transition: opacity 160ms var(--settle), transform 160ms var(--settle);
+}
+
+.music-player__toggle .icon-play {
+  fill: currentColor;
+  stroke: none;
+}
+
+.music-player__toggle .icon-pause,
+.music-player.is-playing .icon-play {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.music-player.is-playing .icon-pause {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.music-player.is-unavailable .music-player__toggle {
+  opacity: 0.6;
+}
+
+.music-player.is-loading .music-player__toggle {
+  cursor: progress;
+}
+
+.music-player__details {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.music-player__info {
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.25;
+}
+
+.music-player__minimize svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.music-player.is-compact {
+  width: auto;
+}
+
+.music-player.is-compact .music-player__details,
+.music-player.is-compact .music-player__minimize {
+  display: none;
+}
+
+.music-player__info span,
+.music-player__info strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-player__info span {
+  color: var(--grey);
+  letter-spacing: 0.12em;
+}
+
+.music-player__info strong {
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* =========================================================================
+   Toast y diálogo de revisión
+   ========================================================================= */
+.toast {
+  position: fixed;
+  right: 12px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 150;
+  max-width: min(360px, calc(100% - 24px));
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--black);
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 250ms var(--settle), transform 250ms var(--settle);
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rsvp-dialog {
+  width: min(calc(100% - 32px), 600px);
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+}
+
+.rsvp-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.78);
+  opacity: 1;
+  transition: opacity 240ms var(--settle);
+}
+
+.rsvp-dialog__panel {
+  position: relative;
+  padding: clamp(24px, 6vw, 48px);
+  background: var(--bone);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 240ms var(--settle), transform 240ms var(--settle);
+}
+
+@starting-style {
+  .rsvp-dialog[open]::backdrop {
+    opacity: 0;
+  }
+
+  .rsvp-dialog[open] .rsvp-dialog__panel {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.rsvp-dialog__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 32px;
+  cursor: pointer;
+  place-items: center;
+}
+
+.rsvp-dialog h2 {
+  padding-right: 40px;
+  font-family: var(--font-display);
+  font-size: clamp(36px, 9vw, 60px);
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+.rsvp-dialog__summary {
+  margin: 32px 0 16px;
+  border-top: 1px solid rgba(10, 10, 10, 0.16);
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.16);
+}
+
+.summary-row span {
+  color: var(--ink-grey);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.9;
+  text-transform: uppercase;
+}
+
+.rsvp-dialog__hint {
+  color: var(--ink-grey);
+  font-size: 15px;
+}
+
+.rsvp-dialog__actions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px 24px;
+  margin-top: 24px;
+}
+
+.rsvp-dialog__actions .button {
+  min-width: 240px;
+}
+
+/* =========================================================================
+   Layout ancho: desktop y tablets / teléfonos en horizontal.
+   Las fotos viven a alto completo (≈1:1 px con las fuentes de 1280 px) en un
+   campo negro; ninguna se estira a todo el ancho.
+   ========================================================================= */
+@media (min-width: 900px), (orientation: landscape) and (min-width: 600px) {
+  .opening__frame {
+    left: 50%;
+    width: calc(100vh * 0.666);
+    transform: translateX(-50%);
+  }
+
+  .opening__frame::after {
+    background: linear-gradient(90deg, rgba(7, 7, 7, 0.5), rgba(7, 7, 7, 0) 30%, rgba(7, 7, 7, 0) 70%, rgba(7, 7, 7, 0.5)), linear-gradient(180deg, rgba(7, 7, 7, 0) 55%, rgba(7, 7, 7, 0.7));
+  }
+
+  .opening__credits {
+    right: 0;
+    bottom: 7vh;
+    left: 0;
+    text-align: center;
+  }
+
+  .opening__title {
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.28em;
+    margin: 0 0 22px;
+    font-size: min(10.5vw, 19vh);
+  }
+
+  .opening__title .line:nth-child(2) {
+    padding-left: 0;
+  }
+
+  .opening__meta {
+    justify-content: center;
+    gap: 36px;
+  }
+
+  .hero__photo {
+    inset: 0 auto 0 50%;
+    width: calc(100vh * 0.75);
+    overflow: visible;
+    transform: translateX(-50%);
+  }
+
+  .hero__photo::after {
+    background: rgba(7, 7, 7, 0.2);
+    opacity: calc(0.4 + var(--p) * 0.6);
+  }
+
+  .hero__names {
+    font-size: min(11.5vw, 23vh);
+  }
+
+  .hero__name--one {
+    top: calc(var(--header-h) + env(safe-area-inset-top) + 3vh);
+    left: 5vw;
+  }
+
+  .hero__name--two {
+    top: auto;
+    right: 5vw;
+    bottom: 7vh;
+  }
+
+  .hero__facts {
+    right: auto;
+    bottom: 8vh;
+    left: 5vw;
+    width: min(340px, calc(50vw - 37.5vh - 5vw - 24px));
+  }
+
+  .hero__when {
+    font-size: clamp(18px, 1.8vw, 26px);
+  }
+
+  .iris {
+    --ix0: calc(50% - 11vh);
+    --iy0: 30%;
+    --fx: calc(50% - 37.5vh);
+  }
+
+  .iris__title {
+    right: 0;
+    bottom: 9vh;
+    left: 0;
+    text-align: center;
+  }
+
+  .iris__title .chapter__title em {
+    display: inline;
+  }
+
+  /* En el layout ancho los títulos se limitan también por alto: un teléfono en
+     horizontal tiene 390 px y no debe perder la foto detrás de un solo título. */
+  .chapter__title {
+    font-size: clamp(48px, min(9.5vw, 18vh), 132px);
+  }
+
+  .iris__title .chapter__title {
+    font-size: clamp(48px, min(10vw, 17vh), 150px);
+  }
+
+  .lunch__title {
+    font-size: clamp(40px, min(6.5vw, 13vh), 96px);
+  }
+
+  .price__amount strong {
+    font-size: clamp(48px, min(7.5vw, 15vh), 116px);
+  }
+
+  .lunch__body {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: end;
+    padding-top: 64px;
+  }
+
+  .dress__head {
+    grid-template-columns: 1.3fr 1fr;
+    align-items: end;
+  }
+
+  .frame {
+    flex-basis: 250px;
+  }
+
+  .dress__guide {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: clamp(32px, 6vw, 96px);
+    padding-top: 56px;
+  }
+
+  .dress__guide .avoid-note {
+    padding: 4px 0 0 24px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .rsvp {
+    grid-template-columns: minmax(16rem, 0.75fr) minmax(0, 1fr);
+    gap: clamp(48px, 6vw, 96px);
+  }
+
+  .rsvp__intro {
+    position: sticky;
+    top: calc(var(--header-h) + 48px);
+    align-self: start;
+  }
+
+  .rsvp-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+
+  .field--full,
+  .form-status,
+  .rsvp-form__submit {
+    grid-column: 1 / -1;
+  }
+
+  .song {
+    grid-template-columns: minmax(16rem, 0.72fr) minmax(0, 1fr);
+    gap: clamp(48px, 6vw, 96px);
+  }
+
+  .song__player {
+    justify-self: end;
+  }
+
+  .closing {
+    --bar-bottom: max(26%, 230px);
+    --bar-pad-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+
+  .closing__frame {
+    left: 50%;
+    width: calc(100vh * 0.666);
+    transform: translateX(-50%);
+  }
+
+  .closing__content {
+    justify-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .closing__signature {
+    flex-direction: row;
+  }
+
+  .closing__sep {
+    display: inline;
+    white-space: pre;
+  }
+
+  .closing .button--single {
+    width: auto;
+    max-width: none;
+  }
+
+  .rsvp .chapter__title {
+    font-size: clamp(48px, min(6.4vw, 15vh), 104px);
+  }
+
+  .music-player {
+    right: 24px;
+  }
+}
+
+/* Teléfono en horizontal: el cierre usa el campo negro lateral para el texto,
+   así la barra inferior no tiene que alojar título, firma y CTA en 390 px. */
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 560px) {
+  .closing {
+    --bar-bottom: 10%;
+  }
+
+  .closing__content {
+    top: 50%;
+    right: var(--gutter);
+    bottom: auto;
+    left: calc(50% + 33.3vh + 24px);
+    height: auto;
+    overflow: visible;
+    padding: 0;
+    justify-items: start;
+    text-align: left;
+    transform: none;
+    translate: 0 -50%;
+  }
+
+  .closing__signature {
+    flex-direction: column;
+  }
+
+  .closing__sep {
+    display: none;
+  }
+
+  .closing__title {
+    font-size: clamp(36px, 5vw, 56px);
+  }
+
+  .closing__signature {
+    letter-spacing: 0.14em;
+  }
+
+  .closing .button--single {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 359px) {
+  .site-header__mark {
+    display: none;
+  }
+
+  /* Los CTA largos ("Confirmar asistencia") entran en una línea a 320 px. */
+  .button {
+    padding: 0 16px;
+    letter-spacing: 0.1em;
+  }
+
+  .site-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 374px) {
+  .site-nav {
+    gap: 14px;
+  }
+
+  .site-nav a {
+    letter-spacing: 0.1em;
+  }
+
+  .music-player__info {
+    max-width: 7rem;
+  }
+
+  .summary-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* =========================================================================
+   Reduced motion
+   Sin escalas, recortes, obturadores ni escenas sticky: cada bloque aparece en
+   su estado final. Sólo quedan transiciones breves de opacidad y color.
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-delay: 0ms !important;
+    transition-duration: 160ms !important;
+    transition-property: opacity, color, background-color, border-color !important;
+  }
+
+  .scene {
+    height: auto;
+    --p: 1 !important;
+    --e: 1 !important;
+  }
+
+  .stage {
+    position: relative;
+  }
+
+  .hero__name--one,
+  .hero__name--two,
+  .hero__photo img,
+  .iris__photo img,
+  .iris__word,
+  .hero__facts,
+  .iris__title,
+  .opening__frame img,
+  .js .lunch__band img,
+  .closing__frame img,
+  .closing__content,
+  .line > span,
+  .js .reveal,
+  .opening__credits,
+  .opening__meta,
+  .button:active,
+  .text-button:active,
+  .music-player__toggle:active,
+  .music-player__minimize:active,
+  .music-player__toggle svg {
+    transform: none !important;
+  }
+
+  .hero__ampersand {
+    opacity: 1;
+  }
+
+  .opening .shutter,
+  .scroll-cue {
+    display: none;
+  }
+
+  .closing .shutter--top,
+  .closing .shutter--bottom {
+    transform: none;
+  }
+
+  .js .lunch__band,
+  .js .frame__crop,
+  .iris__photo {
+    clip-path: none !important;
+  }
+}
