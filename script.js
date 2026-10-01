@@ -972,6 +972,16 @@ function setupMusic() {
     player.classList.add("is-unavailable");
     updateMusicUi(false, "La canción no cargó");
   });
+
+  // Fuera de la vista no suena: al cambiar de pestaña, bloquear el teléfono o salir de la página
+  // se pausa (el evento pause deja la interfaz en "Pausado"). Al volver no se reanuda sola.
+  const pauseInBackground = () => {
+    if (!songAudio.paused) songAudio.pause();
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") pauseInBackground();
+  });
+  window.addEventListener("pagehide", pauseInBackground);
 }
 
 function setMusicPlayerCompact(player, button, compact) {
