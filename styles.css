@@ -1216,6 +1216,7 @@ p {
 }
 
 .frame__crop {
+  display: block;
   position: relative;
   overflow: hidden;
   aspect-ratio: 3 / 5;
@@ -1244,8 +1245,10 @@ p {
 
 .frame__crop img {
   position: absolute;
-  max-width: none;
-  height: auto;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .frame figcaption {

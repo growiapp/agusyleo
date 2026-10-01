@@ -35,7 +35,7 @@ const WEDDING_CONFIG = {
     condition: "Opcional · Cada invitado abona su menú",
   },
   rsvp: {
-    deadlineText: "31 de octubre",
+    deadlineText: "15 de octubre",
     whatsappPhone: "+5492657234650",
   },
   dressCode: {
@@ -362,39 +362,30 @@ function updateScenes() {
   });
 }
 
-/* Dress code: tira de fotogramas con recortes reales de los collages.
-   Cada recorte es [x, y, w, h] en px de la fuente y se muestra con escala uniforme
-   dentro de un marco 3:5 (nunca se deforma). Los rótulos usan sólo prendas del texto
-   confirmado de cada guía. */
+/* Dress code: tira de fotogramas, una foto por marco 3:5 (recortada y llevada a B&N en
+   tools/process-images.py). AVIF con WebP de respaldo; las rutas van completas para que
+   build-site.mjs las publique. Los rótulos usan sólo prendas del texto confirmado de cada guía. */
 const DRESS_REFERENCES = {
   women: {
     tab: "Ellas",
     outfit: 0,
-    src: "assets/dresscode/women-lg.webp",
-    width: 720,
-    height: 1280,
-    crops: [
-      ["Vestido midi", 105, 100, 240, 400],
-      ["Pantalón de vestir", 241, 0, 258, 430],
-      ["Vestido corto", 474, 390, 246, 410],
-      ["Falda", 90, 470, 270, 450],
-      ["Mono", 205, 880, 240, 400],
-      ["Pantalón de vestir", 225, 330, 300, 500],
+    frames: [
+      ["Vestido midi", "assets/dresscode/women-01-lg.avif", "assets/dresscode/women-01-lg.webp"],
+      ["Pantalón de vestir", "assets/dresscode/women-02-lg.avif", "assets/dresscode/women-02-lg.webp"],
+      ["Vestido corto", "assets/dresscode/women-03-lg.avif", "assets/dresscode/women-03-lg.webp"],
+      ["Conjunto", "assets/dresscode/women-04-lg.avif", "assets/dresscode/women-04-lg.webp"],
+      ["Pantalón de vestir", "assets/dresscode/women-05-lg.avif", "assets/dresscode/women-05-lg.webp"],
     ],
   },
   men: {
     tab: "Ellos",
     outfit: 1,
-    src: "assets/dresscode/men-lg.webp",
-    width: 900,
-    height: 1600,
-    crops: [
-      ["Camisa", 339, 0, 252, 420],
-      ["Chomba", 20, 590, 312, 520],
-      ["Pantalón de vestir", 260, 380, 420, 700],
-      ["Remera lisa", 470, 880, 330, 550],
-      ["Camisa", 160, 20, 240, 400],
-      ["Chino", 0, 1060, 324, 540],
+    frames: [
+      ["Camisa", "assets/dresscode/men-01-lg.avif", "assets/dresscode/men-01-lg.webp"],
+      ["Chomba", "assets/dresscode/men-02-lg.avif", "assets/dresscode/men-02-lg.webp"],
+      ["Pantalón de vestir", "assets/dresscode/men-03-lg.avif", "assets/dresscode/men-03-lg.webp"],
+      ["Remera lisa", "assets/dresscode/men-04-lg.avif", "assets/dresscode/men-04-lg.webp"],
+      ["Chino", "assets/dresscode/men-05-lg.avif", "assets/dresscode/men-05-lg.webp"],
     ],
   },
 };
@@ -415,9 +406,10 @@ function setupDressCode() {
   const render = (key) => {
     const set = DRESS_REFERENCES[key];
     strip.replaceChildren(
-      ...set.crops.map(([label, x, y, w, h], index) => {
+      ...set.frames.map(([label, avif, webp], index) => {
         const figure = document.createElement("figure");
-        const crop = document.createElement("div");
+        const crop = document.createElement("picture");
+        const source = document.createElement("source");
         const image = document.createElement("img");
         const caption = document.createElement("figcaption");
         const name = document.createElement("b");
@@ -425,20 +417,17 @@ function setupDressCode() {
         figure.className = "frame";
         crop.className = "frame__crop";
         crop.style.transitionDelay = reducedMotion.matches ? "0ms" : `${index * 55}ms`;
-        image.src = set.src;
+        source.type = "image/avif";
+        source.srcset = avif;
+        image.src = webp;
         image.alt = `${set.tab}: referencia de ${label.toLowerCase()}`;
         image.loading = "lazy";
         image.decoding = "async";
-        image.width = set.width;
-        image.height = set.height;
-        Object.assign(image.style, {
-          width: `${(set.width / w) * 100}%`,
-          left: `${(-x / w) * 100}%`,
-          top: `${(-y / h) * 100}%`,
-        });
+        image.width = 720;
+        image.height = 1200;
         name.textContent = label;
         number.textContent = String(index + 1).padStart(2, "0");
-        crop.append(image);
+        crop.append(source, image);
         caption.append(name, number);
         figure.append(crop, caption);
         return figure;
