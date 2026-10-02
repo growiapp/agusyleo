@@ -33,6 +33,8 @@ const WEDDING_CONFIG = {
     currency: "ARS",
     costUnit: "por invitado",
     condition: "Opcional · Cada invitado abona su menú",
+    paymentDeadline: "2026-10-25",
+    paymentAlias: "Boda.AyL26",
   },
   rsvp: {
     deadlineText: "15 de octubre",
@@ -573,9 +575,13 @@ async function copyText(value) {
     helper.style.opacity = "0";
     document.body.append(helper);
     helper.select();
-    const copied = document.execCommand("copy");
-    helper.remove();
-    return copied;
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      helper.remove();
+    }
   }
 }
 
@@ -698,19 +704,85 @@ function setupRsvpProgressiveFields(form) {
   decrease?.addEventListener("click", () => {
     const current = Number(exactInput?.value);
     if (exactInput) exactInput.value = String(Math.max(5, Number.isInteger(current) ? current - 1 : 5));
-    syncStepper();
+    exactInput?.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
   increase?.addEventListener("click", () => {
     const current = Number(exactInput?.value);
     if (exactInput) exactInput.value = String(Number.isInteger(current) && current >= 5 ? current + 1 : 5);
-    syncStepper();
+    exactInput?.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
   exactInput?.addEventListener("input", syncStepper);
+  setupLunchPayment(form);
   setExactVisibility(exactChoice?.checked === true);
   setFoodDetailsVisibility(foodYes?.checked === true);
   syncStepper();
+}
+
+// Datos de pago para el invitado: se muestran con almuerzo = Sí y una cantidad elegida.
+// Nunca van al mensaje de WhatsApp ni al resumen. Sin una cantidad válida (5+ sin número exacto)
+// no se inventa un total: sólo el precio por invitado.
+function getLunchPaymentLine(count) {
+  const { cost, currency, costUnit } = WEDDING_CONFIG.lunch;
+  if (!Number.isInteger(count) || count < 1) return `${formatMoney(cost, currency)} ${costUnit}`;
+  return `${count} ${count === 1 ? "invitado" : "invitados"} · ${formatMoney(cost * count, currency)} total`;
+}
+
+// La fecha de pago sale sólo de lunch.paymentDeadline (AAAA-MM-DD, el día cuenta completo).
+function getLunchPaymentDeadlineCopy() {
+  const date = new Date(`${WEDDING_CONFIG.lunch.paymentDeadline}T00:00:00Z`);
+  const text = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", timeZone: "UTC" }).format(date);
+  return `Podés transferir hasta el ${text}.`;
+}
+
+function setupLunchPayment(form) {
+  const payment = byId("lunchPayment");
+  const copyButton = byId("copyLunchAlias");
+  if (!payment || !copyButton) return;
+  const { paymentAlias } = WEDDING_CONFIG.lunch;
+  setText("lunchPaymentDeadline", getLunchPaymentDeadlineCopy());
+  setText("lunchPaymentAlias", paymentAlias);
+
+  // Abrir/cerrar sólo cuando cambia el estado: cambiar la cantidad actualiza el texto sin reanimar.
+  // Al abrir, si COPIAR quedó bajo el reproductor fijo o fuera de pantalla, se trae a la vista
+  // (scroll-margin-bottom deja libre el reproductor; "nearest" no mueve nada si ya se ve).
+  let revealTimer;
+  const sync = () => {
+    const data = new FormData(form);
+    const countChoice = String(data.get("guestCount") || "");
+    const visible = data.get("lunchAttendance") === "Sí" && countChoice !== "";
+    const exact = Number(data.get("guestCountExact"));
+    const count = countChoice === "5+" ? (exact >= 5 ? exact : NaN) : Number(countChoice);
+    if (visible) setText("lunchPaymentTotal", getLunchPaymentLine(count));
+    const opening = visible && !payment.classList.contains("is-open");
+    payment.classList.toggle("is-open", visible);
+    payment.inert = !visible;
+    // Las radios emiten input y change: sólo se cancela al cerrar, no en el segundo aviso.
+    if (!visible) window.clearTimeout(revealTimer);
+    if (opening) {
+      revealTimer = window.setTimeout(() => copyButton.scrollIntoView({ block: "nearest" }), reducedMotion.matches ? 0 : 360);
+    }
+  };
+  form.addEventListener("change", sync);
+  form.addEventListener("input", sync);
+  sync();
+
+  let resetTimer;
+  copyButton.addEventListener("click", async () => {
+    const copied = await copyText(paymentAlias);
+    window.clearTimeout(resetTimer);
+    copyButton.textContent = copied ? "Copiado" : "Copiar";
+    setText("lunchAliasStatus", copied ? "Alias copiado" : "");
+    if (!copied) {
+      showToast(`No pudimos copiar el alias. Copialo a mano: ${paymentAlias}`);
+      return;
+    }
+    resetTimer = window.setTimeout(() => {
+      copyButton.textContent = "Copiar";
+      setText("lunchAliasStatus", "");
+    }, 2400);
+  });
 }
 
 function clearFormErrors(form) {

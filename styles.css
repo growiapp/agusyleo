@@ -1519,6 +1519,105 @@ p {
   display: none;
 }
 
+/* Pago del almuerzo: aparece debajo de la cantidad cuando almuerzo = Sí.
+   Propósito: mostrar datos que el invitado necesita sin cortar el flujo. Frecuencia: al cambiar
+   almuerzo/cantidad. 360 ms con --settle: alto (0fr → 1fr), opacidad y 6 px de desplazamiento.
+   Cerrado no ocupa lugar: el campo siguiente absorbe el gap del formulario. Reduced motion: inmediato. */
+.lunch-payment {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-6px);
+  visibility: hidden;
+  transition:
+    grid-template-rows 360ms var(--settle),
+    opacity 240ms ease,
+    transform 360ms var(--settle),
+    visibility 0s linear 360ms;
+}
+
+.lunch-payment.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.lunch-payment + .field {
+  transition: margin-top 360ms var(--settle);
+}
+
+.lunch-payment:not(.is-open) + .field {
+  margin-top: -24px;
+}
+
+.lunch-payment__inner {
+  min-height: 0;
+  /* Espacio para el foco de COPIAR, que el recorte del alto no debe cortar. */
+  margin: 0 -6px;
+  padding: 0 6px;
+  overflow: hidden;
+}
+
+.lunch-payment__inner > p {
+  margin: 0;
+}
+
+.lunch-payment__label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--grey);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lunch-payment__total {
+  font-size: 16px;
+}
+
+.lunch-payment__deadline {
+  margin-top: 2px !important;
+  color: var(--grey-soft);
+  font-size: 14px;
+}
+
+.lunch-payment__alias {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lunch-payment__alias p {
+  margin: 0;
+}
+
+.lunch-payment__alias .lunch-payment__label {
+  margin-bottom: 4px;
+}
+
+.lunch-payment__alias strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.2;
+  user-select: all;
+}
+
+.lunch-payment__alias .text-button {
+  flex-shrink: 0;
+  color: var(--bone);
+  /* Mismo despeje que el toast: al enfocarse o revelarse no queda bajo el reproductor fijo. */
+  scroll-margin-bottom: calc(84px + env(safe-area-inset-bottom));
+}
+
 .stepper {
   display: grid;
   width: fit-content;
@@ -2452,6 +2551,13 @@ body.invitation-open .music-player {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .lunch-payment,
+  .lunch-payment.is-open,
+  .lunch-payment + .field {
+    transform: none;
+    transition-duration: 0ms !important;
   }
 
   *,
